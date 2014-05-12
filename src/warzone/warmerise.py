@@ -8,6 +8,7 @@ sets a special cookie on login.
 """
 
 import re, requests
+import errors as err
 
 # Path to directory with Warmerise's custom PHP scripts
 NSDG_PHP_PATH = "http://warmerise.com/Warmerise/PHP/Public/"
@@ -32,15 +33,16 @@ def login(email, password):
 	
 	response = requests.post(url, data=data,
 		cookies=session.get_cookies(), headers=headers,
-		allow_redirects=False) 
+		allow_redirects=False)
 		
 	# We don't want to follow the 302->200 redirect so we can
 	# grab the w1337 cookie
 	if response.status_code != 302:
-		raise StandardError("Unexpected status code on login: %i" % response.status_code)
+		raise err.WarmeriseStatusCodeError(response)
 	
 	if "w1337" not in response.cookies:
-		raise StandardError("w1337 cookie not found after login")
+		raise err.WarmeriseAuthError(msg="w1337 cookie not found after login",
+			response=response)
 	
 	session.w1337 = response.cookies["w1337"]
 	
@@ -60,10 +62,10 @@ def complete_session_info(session):
 		cookies=session.get_cookies(), headers=get_headers())
 	
 	if response.status_code != 200:
-		raise StandardError("Unexpected status code on GameLogin.php: %i" % response.status_code)
+		raise err.WarmeriseStatusCodeError(response)
 	
 	session.set_gamelogin(response.text)
-	
+
 def get_headers():
 	return {
 		"Host": "www.warmerise.com",
@@ -78,7 +80,8 @@ def get_phpsessid():
 	sid = response.cookies["PHPSESSID"]
 	
 	if sid is None:
-		raise StandardError("Could not retrieve a PHPSESSID")
+		raise err.WarmeriseAuthError(msg="Could not retrieve a PHPSESSID",
+			response=response)
 	
 	return sid
 
