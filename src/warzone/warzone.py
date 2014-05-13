@@ -2,16 +2,22 @@
 
 import argparse
 import warmerise
-
-from pprint import pprint
+import interpreter as warzonecmd
 
 def main():
 	parser = create_parser()
 	args = parser.parse_args()
 	
-	if args.email and args.password:
-		session = warmerise.login(email=args.email, password=args.password)
-		pprint(vars(session))
+	#if args.email and args.password:
+	#	session = warmerise.login(email=args.email, password=args.password)
+	#	pprint(vars(session))
+	
+	interpreter = warzonecmd.WarzoneCmd()
+	
+	if args.email or args.password:
+		interpreter.prompt_login(email=args.email, password=args.password)
+	
+	interpreter.start()
 	
 def create_parser():
 	parser = argparse.ArgumentParser(add_help=True,
