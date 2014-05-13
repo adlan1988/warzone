@@ -2,6 +2,7 @@
 
 import argparse, cmd, getpass
 import api, warmerise
+from pprint import pprint
 
 try:
 	import readline
@@ -57,7 +58,7 @@ class WarzoneCmd(cmd.Cmd):
 		
 		if session is None: return
 		
-		self.sessions[session.username] = session
+		self.sessions[session.username.lower()] = session
 		self.session = session
 		
 		self.update_prompt()
@@ -90,6 +91,44 @@ class WarzoneCmd(cmd.Cmd):
 		if args.phpsessid: self.prompt_login(phpsessid=args.phpsessid)
 		else: self.prompt_login(email=args.email, password=args.password)
 	
+	#
+	# Command: `session`
+	#
+	
+	def help_session(self):
+		self.create_parser_session().print_help()
+	
+	def do_session(self, str):
+		""" """
+		parser = self.create_parser_session()
+		
+		try: args = parser.parse_args(str.split())
+		except: return
+		
+		if args.all:
+			for (username, session) in self.sessions.items():
+				self.print_session(session)
+		elif args.session is None and self.session:
+			self.print_session(self.session)
+		
+		if args.session: # Switch to session
+			selected = None
+			search = args.session.lower()
+			
+			if "@" in search:
+				for (username, session) in self.sessions.items():
+					if search == session.email.lower():
+						selected = session
+						break
+			else:
+				try: selected = self.sessions[search]
+				except KeyError: pass
+			
+			if selected: self.session = selected
+			else: print("Specified username/e-mail address not found in active sessions")
+			
+			self.update_prompt()
+	
 	def create_parser_login(self):
 		parser = argparse.ArgumentParser(prog="login", add_help=False,
 			description="login to Warmerise and store the session for later use")
@@ -97,3 +136,16 @@ class WarzoneCmd(cmd.Cmd):
 		parser.add_argument("password", metavar="PASS", nargs="?", default=None, help="password to login with")
 		#parser.add_argument("-P", "--phpsessid", metavar="SESSION", help="PHPSESSID to login with")
 		return parser
+	
+	def create_parser_session(self):
+		parser = argparse.ArgumentParser(prog="session", add_help=False,
+			description="switch to a different session or print information about sessions")
+		parser.add_argument("-a", "--all", action="store_true", help="print information about all sessions")
+		parser.add_argument("session", metavar="SESSION", nargs="?", default=None, help="username/email of session to switch to")
+		return parser
+	
+	def print_session(self, session=None):
+		""" Print information about a session """
+		if not session and self.session: session = self.session
+		elif not session: return
+		pprint(vars(session))
