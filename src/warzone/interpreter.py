@@ -35,7 +35,7 @@ class WarzoneCmd(cmd.Cmd):
 		self.prompt = "(Warzone%s) " % sesname
 	
 	def prompt_login(self, email=None, password=None, phpsessid=None):
-		
+		""" Prompt the user to login to an account """
 		session = None
 		
 		try:
@@ -99,7 +99,7 @@ class WarzoneCmd(cmd.Cmd):
 		self.create_parser_session().print_help()
 	
 	def do_session(self, str):
-		""" """
+		""" Select a session or print information about them """
 		parser = self.create_parser_session()
 		
 		try: args = parser.parse_args(str.split())
@@ -133,6 +133,7 @@ class WarzoneCmd(cmd.Cmd):
 		self.create_parser_stats().print_help()
 	
 	def do_stats(self, str):
+		""" Modify the stats of the account of the current session """
 		parser = self.create_parser_stats()
 		
 		try: args = parser.parse_args(str.split())
@@ -155,16 +156,18 @@ class WarzoneCmd(cmd.Cmd):
 		if args.killstreak <= self.session.highest_killstreak:
 			args.killstreak = None
 		
-		stats = {}
+		kills = deaths = killstreak = 0
+		
 		if args.kills is not None:
-			stats["kills"] = args.kills - self.session.kills
+			kills = args.kills - self.session.kills
 		if args.deaths is not None:
-			stats["deaths"] = args.deaths - self.session.deaths
+			deaths = args.deaths - self.session.deaths
 		if args.killstreak is not None:
-			stats["highest_killstreak"] = args.killstreak
+			killstreak = args.killstreak
 		
 		print("Sending stats...")
-		self.api.save_score(session=self.session, stats=stats)
+		self.api.save_score(session=self.session,
+			kills=kills, deaths=deaths, killstreak=killstreak)
 		
 		print("Confirming change...")
 		self.session.set_game_login()
