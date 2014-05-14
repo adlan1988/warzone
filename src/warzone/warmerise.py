@@ -39,7 +39,8 @@ def login(email, password):
 	# We don't want to follow the 302->200 redirect so we can
 	# grab the w1337 cookie
 	if response.status_code != 302:
-		raise err.WarmeriseStatusCodeError(response)
+		if response.status_code == 200: raise err.WarmeriseAuthError(response)
+		else: raise err.WarmeriseStatusCodeError(response)
 	
 	if "w1337" not in response.cookies:
 		raise err.WarmeriseAuthError(msg="w1337 cookie not found after login",

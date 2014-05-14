@@ -4,6 +4,8 @@ import argparse, cmd, getpass
 import api, warmerise
 from pprint import pprint
 
+import errors as err
+
 try:
 	import readline
 except ImportError:
@@ -20,12 +22,33 @@ class WarzoneCmd(cmd.Cmd):
 		self.session = None
 		self.sessions = {}
 		
+		self.keyinter = False
+		
 		self.update_prompt()
 	
 	def start(self):
-		# For now, just cmdloop wrapper.
-		# Will make this more sophisticated for exception handling later
-		self.cmdloop()
+		""" Start the interpreter """
+		while True:
+			try:
+				self.cmdloop()
+				self.postloop()
+				break
+			except KeyboardInterrupt:
+				print
+				if not self.keyinter:
+					self.keyinter = True
+				else:
+					exit(0)
+			except err.WarmeriseWebError as e:
+				print(str(e))
+	
+	def emptyline(self):
+		pass
+	
+	def precmd(self, line=None):
+		""" We have a command, clear key interrupt """
+		self.keyinter = False
+		return line
 	
 	def update_prompt(self):
 		""" Update the prompt using selected session """
@@ -54,8 +77,11 @@ class WarzoneCmd(cmd.Cmd):
 					password = getpass.getpass("Password: ")
 				
 				session = warmerise.login(email, password)
-		except err.NPlayAuthError as e:
+		except err.WarmeriseAuthError as e:
 			print("Login failed") # Use logging later
+			return
+		except err.WarmeriseStatusCodeError as e:
+			print("Login failed (site may just be down)")
 			return
 		
 		if session is None: return
