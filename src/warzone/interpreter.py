@@ -129,6 +129,61 @@ class WarzoneCmd(cmd.Cmd):
 			
 			self.update_prompt()
 	
+	def help_stats(self):
+		self.create_parser_stats().print_help()
+	
+	def do_stats(self, str):
+		parser = self.create_parser_stats()
+		
+		try: args = parser.parse_args(str.split())
+		except: return
+		
+		# Make sure we're in a session
+		if self.session is None:
+			print("No login session to set stats for")
+			return
+		
+		# Nothing to do
+		if args.kills is None and args.deaths is None and args.killstreak is None:
+			return
+		
+		# Refresh
+		self.session.set_game_login()
+		
+		# If desired killstreak is less than or equal to current,
+		# no point in sending
+		if args.killstreak <= self.session.highest_killstreak:
+			args.killstreak = None
+		
+		stats = {}
+		if args.kills is not None:
+			stats["kills"] = args.kills - self.session.kills
+		if args.deaths is not None:
+			stats["deaths"] = args.deaths - self.session.deaths
+		if args.killstreak is not None:
+			stats["highest_killstreak"] = args.killstreak
+		
+		print("Sending stats...")
+		self.api.save_score(session=self.session, stats=stats)
+		
+		print("Confirming change...")
+		self.session.set_game_login()
+		
+		success = True
+		
+		if args.kills is not None and args.kills != self.session.kills:
+			print("Kills count was not changed successfully")
+			success = False
+		if args.deaths is not None and args.deaths != self.session.deaths:
+			print("Deaths count was not changed successfully")
+			success = False
+		if args.killstreak is not None and args.killstreak != self.session.highest_killstreak:
+			print("Killstreak count was not changed successfully")
+			success = False
+		
+		if success:
+			print("All changes successful!")
+	
 	def create_parser_login(self):
 		parser = argparse.ArgumentParser(prog="login", add_help=False,
 			description="login to Warmerise and store the session for later use")
@@ -142,6 +197,15 @@ class WarzoneCmd(cmd.Cmd):
 			description="switch to a different session or print information about sessions")
 		parser.add_argument("-a", "--all", action="store_true", help="print information about all sessions")
 		parser.add_argument("session", metavar="SESSION", nargs="?", default=None, help="username/email of session to switch to")
+		return parser
+	
+	def create_parser_stats(self):
+		parser = argparse.ArgumentParser(prog="stats", add_help=False,
+			description="set kills, deaths, and highest killstreak for an account")
+		parser.add_argument("-k", "--kills", type=int, default=None, help="set kills for an account")
+		parser.add_argument("-d", "--deaths", type=int, default=None, help="set deaths for an account")
+		parser.add_argument("-K", "--killstreak", type=int, default=None,
+			help="set the highest killstreak for an account (warning: killstreak count cannot be decreased)")
 		return parser
 	
 	def print_session(self, session=None):

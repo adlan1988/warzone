@@ -8,6 +8,7 @@ sets a special cookie on login.
 """
 
 import re, requests
+import api
 import errors as err
 
 # Path to directory with Warmerise's custom PHP scripts
@@ -54,6 +55,7 @@ def complete_session_info(session):
 	""" Complete the session info, currently only makes
 	a call to GameLogin.php """
 	
+	"""
 	data = {
 		"hash": session.w1337,
 	}
@@ -61,10 +63,13 @@ def complete_session_info(session):
 	response = requests.post("%s/GameLogin.php" % NSDG_PHP_PATH, data=data,
 		cookies=session.get_cookies(), headers=get_headers())
 	
+	response = api.WarmeriseAPI().game_login(w1337=session.w1337)
+	
 	if response.status_code != 200:
 		raise err.WarmeriseStatusCodeError(response)
+	"""
 	
-	session.set_gamelogin(response.text)
+	session.set_game_login()
 
 def get_headers():
 	return {
@@ -110,11 +115,18 @@ class Session:
 		if self.w1337: cookies["w1337"] = self.w1337
 		return cookies
 	
-	def set_gamelogin(self, text):
+	def set_game_login(self, text=None):
 		""" Set fields from the response given by GameLogin.php """
+		if self.w1337 is None:
+			return
+		
+		# If text is None, complete it
+		if text is None:
+			text = api.WarmeriseAPI().game_login(w1337=self.w1337).text
+		
 		# Replace weird stuff with colon
 		text = re.sub(r'[^\x00-\x7F]+',':', text).encode("ascii")
-		#separator = "\xA7"
+		#separator = "\xC2A7" # Big-endian
 		
 		lines = text.splitlines()
 		

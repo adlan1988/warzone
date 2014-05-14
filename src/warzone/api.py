@@ -12,7 +12,13 @@ class WarmeriseAPI:
 		url = "%s/%s" % (self.api_path, path)
 		response = requests.post(url, data=data)
 		
+		if response.status_code != 200:
+			raise err.WarmeriseStatusCodeError(response)
+		
 		return response
+	
+	def game_login(self, w1337):
+		return self.post("GameLogin.php", data={ "hash": w1337 })
 	
 	def save_score(self, session, stats):
 		
@@ -24,7 +30,7 @@ class WarmeriseAPI:
 		
 		data_str = "%s,%s,%i,%i,%i,%i" % (
 			session.username, session.key,
-			stats.xp, stats.kills, stats.deaths, stats.highest_killstreak
+			stats["xp"], stats["kills"], stats["deaths"], stats["highest_killstreak"]
 		)
 		
 		response = self.post("SaveScore.php", data={ "data": data_str })
