@@ -43,7 +43,9 @@ class WarzoneCmd(cmd.Cmd):
 				raise NotImplementedError
 			else:  # E-mail / password login
 				noecho = "(Password will not echo)" if (password is None) else ""
-				print("Prompting for auth info: %s" % noecho)
+				
+				if email is None or password is None:
+					print("Prompting for auth info: %s" % noecho)
 				
 				if email is None:
 					email = raw_input("E-mail: ")
