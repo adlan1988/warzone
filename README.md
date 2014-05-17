@@ -1,6 +1,6 @@
 # Warzone - Warmerise API Client
 
-Warzone is a Python API built for Warmerise, and is of similar style to PlayN.
+Warzone is a Python API client built for Warmerise, and is of similar style to PlayN.
 
 Currently Warzone can:
 
