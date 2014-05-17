@@ -215,6 +215,59 @@ class WarzoneCmd(cmd.Cmd):
 		if success:
 			print("All changes successful!")
 	
+	def help_xp(self):
+		self.create_parser_xp().print_help()
+	
+	def do_xp(self, str):
+		""" Set the XP for an account. Reserved for its own command as setting
+		the XP to a greater value may require request spamming. """
+		parser = self.create_parser_xp()
+		
+		try: args = parser.parse_args(str.split())
+		except: return
+		
+		if self.session is None:
+			print("No login session to set xp for")
+			return
+		
+		# Refresh
+		self.session.set_game_login()
+		
+		# Nothing to do
+		if args.xp == self.session.xp:
+			return
+		
+		# No limit for subtracting
+		if args.xp < self.session.xp:
+			response = self.api.save_score(session=self.session, xp=(args.xp - self.session.xp))
+		else:
+			# Need to send a bunch of responses...
+			incr = args.increment
+			
+			if incr > 49 and not args.ignore_roof:
+				print("Lowering increment value to 49, anything greater is ignored by the API...")
+				incr = 49
+			
+			diff = args.xp - self.session.xp
+			
+			numreqs = diff / incr # Number of requests to send with fill increment value
+			leftovers = diff % incr # XP value to send for final request
+			
+			# Send N requests with full increment
+			for i in range(0, numreqs):
+				print("Sending XP=%i as request (%i / %i)" % (incr, i, numreqs))
+				response = self.api.save_score(session=self.session, xp=incr)
+			
+			# Send leftovers
+			if leftovers > 0:
+				print("Sending leftover XP=%i" % leftovers)
+				response = self.api.save_score(session=self.session, xp=leftovers)
+		
+		self.session.set_game_login()
+		
+		if self.session.xp != args.xp:
+			print("XP was not changed successfully")
+	
 	def create_parser_login(self):
 		parser = argparse.ArgumentParser(prog="login", add_help=False,
 			description="login to Warmerise and store the session for later use")
@@ -237,6 +290,14 @@ class WarzoneCmd(cmd.Cmd):
 		parser.add_argument("-d", "--deaths", type=int, default=None, help="set deaths for an account")
 		parser.add_argument("-K", "--killstreak", type=int, default=None,
 			help="set the highest killstreak for an account (warning: killstreak count cannot be decreased)")
+		return parser
+	
+	def create_parser_xp(self):
+		parser = argparse.ArgumentParser(prog="xp", add_help=False,
+			description="set xp for an account")
+		parser.add_argument("-i", "--increment", type=int, default=49, help="amount to increment by (max: 49)")
+		parser.add_argument("-R", "--ignore-roof", action="store_true", help="don't force the increment roof")
+		parser.add_argument("xp", metavar="XP", type=int, help="desired amount of XP")
 		return parser
 	
 	def print_session(self, session=None):
