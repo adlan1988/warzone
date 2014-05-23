@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 import argparse, cmd, getpass
-import api, warmerise
+import api, warmerise, xp
 from pprint import pprint
 
 import errors as err
@@ -226,6 +226,8 @@ class WarzoneCmd(cmd.Cmd):
 		try: args = parser.parse_args(str.split())
 		except: return
 		
+		if args.method is None: args.method = "sync" # Default method
+		
 		if self.session is None:
 			print("No login session to set xp for")
 			return
@@ -250,18 +252,14 @@ class WarzoneCmd(cmd.Cmd):
 			
 			diff = args.xp - self.session.xp
 			
-			numreqs = diff / incr # Number of requests to send with fill increment value
-			leftovers = diff % incr # XP value to send for final request
+			grinder = xp.XPGrinder(session=self.session, diff=diff, increment=incr)
 			
-			# Send N requests with full increment
-			for i in range(0, numreqs):
-				print("Sending XP=%i as request (%i / %i)" % (incr, i, numreqs))
-				response = self.api.save_score(session=self.session, xp=incr)
-			
-			# Send leftovers
-			if leftovers > 0:
-				print("Sending leftover XP=%i" % leftovers)
-				response = self.api.save_score(session=self.session, xp=leftovers)
+			if args.method == "sync": grinder.grind_sync()
+			elif args.method == "async":
+				try: grinder.grind_async()
+				except ImportError:
+					print("Async method not available, grequests not found")
+					return
 		
 		self.session.set_game_login()
 		
@@ -295,6 +293,8 @@ class WarzoneCmd(cmd.Cmd):
 	def create_parser_xp(self):
 		parser = argparse.ArgumentParser(prog="xp", add_help=False,
 			description="set xp for an account")
+		parser.add_argument("-a", "--method-async", dest="method", action="store_const", const="async",
+			help="use asynchronous method to spam requests")
 		parser.add_argument("-i", "--increment", type=int, default=49, help="amount to increment by (max: 49)")
 		parser.add_argument("-R", "--ignore-roof", action="store_true", help="don't force the increment roof")
 		parser.add_argument("xp", metavar="XP", type=int, help="desired amount of XP")
