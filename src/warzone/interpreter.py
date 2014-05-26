@@ -254,14 +254,34 @@ class WarzoneCmd(cmd.Cmd):
 			
 			grinder = xp.XPGrinder(session=self.session, diff=diff, increment=incr)
 			
-			if args.method == "sync": grinder.grind_sync()
+			if args.method == "sync":
+				grinder.grind_sync()
+				self.session.set_game_login()
+				
 			elif args.method == "async":
-				try: grinder.grind_async()
+				try:
+					grinder.grind_async()
+					
+					# Not all async requests may be processed equally..
+					# This seems a bit dumb, but it's hard to tell how many
+					# requests will be "ignored" server sided
+					
+					self.session.set_game_login()
+					
+					if self.session.xp > args.xp: # We went over the desired amount, drop down
+						self.api.save_score(session=self.session, xp=(args.xp - self.session.xp))
+					elif self.session.xp < args.xp: # Need to increase more, just do sync
+						print("Async got xp up to %i / %i, needs %i more (doing sync)"
+							% (self.session.xp, args.xp, args.xp - self.session.xp))
+						
+						grinder.diff = args.xp - self.session.xp
+						grinder.reset().grind_sync()
+						
+					self.session.set_game_login()
+					
 				except ImportError:
 					print("Async method not available, grequests not found")
 					return
-		
-		self.session.set_game_login()
 		
 		if self.session.xp != args.xp:
 			print("XP was not changed successfully")

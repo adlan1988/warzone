@@ -27,9 +27,9 @@ class WarmeriseAPI:
 			if not grequests: raise ImportError
 			
 			wrapper = WarmeriseAPICallbackWrapper(callback)
-			req = grequests.get(path, hooks={ "response": wrapper.fire })
+			req = grequests.post(url, data=data, hooks={ "response": wrapper.fire })
 			
-			return grequests.map([req])
+			return grequests.send(req, grequests.Pool(1))
 	
 	def game_login(self, w1337, async=False, callback=None):
 		""" Send a POST to GameLogin.php to get info about an account """
