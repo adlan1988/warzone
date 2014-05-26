@@ -101,7 +101,7 @@ class WarzoneCmd(cmd.Cmd):
 	def do_exit(self, str):
 		return True
 	
-	# 
+	#
 	# Command: `login`
 	#
 	
@@ -118,6 +118,27 @@ class WarzoneCmd(cmd.Cmd):
 		args.phpsessid = None
 		if args.phpsessid: self.prompt_login(phpsessid=args.phpsessid)
 		else: self.prompt_login(email=args.email, password=args.password)
+	
+	#
+	# Command: `refresh`
+	#
+	
+	def help_refresh(self):
+		self.create_parser_refresh().print_help()
+	
+	def do_refresh(self, str):
+		""" Refresh stats of the current session """
+		parser = self.create_parser_refresh()
+		
+		try: args = parser.parse_args(str.split())
+		except: return
+		
+		if self.session is None:
+			print("No session to refresh stats for")
+			return
+		
+		self.session.set_game_login()
+		self.print_stats()
 	
 	#
 	# Command: `session`
@@ -174,6 +195,7 @@ class WarzoneCmd(cmd.Cmd):
 		
 		# Nothing to do
 		if args.kills is None and args.deaths is None and args.killstreak is None:
+			self.print_stats()
 			return
 		
 		# Refresh
@@ -284,7 +306,7 @@ class WarzoneCmd(cmd.Cmd):
 					return
 		
 		if self.session.xp != args.xp:
-			print("XP was not changed successfully")
+			print("XP was not changed successfully (this may be because the server is a few milliseconds behind, try the 'refresh' command)")
 	
 	def create_parser_login(self):
 		parser = argparse.ArgumentParser(prog="login", add_help=False,
@@ -292,6 +314,11 @@ class WarzoneCmd(cmd.Cmd):
 		parser.add_argument("email", metavar="EMAIL", nargs="?", default=None, help="e-mail address to login with")
 		parser.add_argument("password", metavar="PASS", nargs="?", default=None, help="password to login with")
 		#parser.add_argument("-P", "--phpsessid", metavar="SESSION", help="PHPSESSID to login with")
+		return parser
+	
+	def create_parser_refresh(self):
+		parser = argparse.ArgumentParser(prog="refresh", add_help=False,
+			description="refresh the stats of the current session")
 		return parser
 	
 	def create_parser_session(self):
@@ -325,3 +352,13 @@ class WarzoneCmd(cmd.Cmd):
 		if not session and self.session: session = self.session
 		elif not session: return
 		pprint(vars(session))
+	
+	def print_stats(self, session=None):
+		if not session and self.session: session = self.session
+		elif not session: return
+		
+		print("Stats for %s:" % session.username)
+		print(" Kills:              %i" % session.kills)
+		print(" Deaths:             %i" % session.deaths)
+		print(" Highest Killstreak: %i" % session.highest_killstreak)
+		print(" XP:                 %i" % session.xp)
